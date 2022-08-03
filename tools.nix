@@ -392,38 +392,11 @@ rec {
               packageId = toPackageId package;
               src = getSrcFromGitSource source;
               srcName = "${name}-${version}";
-
-              rootCargo = builtins.fromTOML (builtins.readFile "${src}/Cargo.toml");
-              isWorkspace = rootCargo ? "workspace";
-              isPackage = rootCargo ? "package";
-              containedCrates = rootCargo.workspace.members ++ (if isPackage then [ "." ] else [ ]);
-
-              getCrateNameFromPath = path:
-                let
-                  cargoTomlCrate = builtins.fromTOML (builtins.readFile "${src}/${path}/Cargo.toml");
-                in
-                cargoTomlCrate.package.name;
-
-              filteredPaths =
-                builtins.filter
-                  (to_filter: getCrateNameFromPath to_filter == name)
-                  containedCrates;
-
-              pathToExtract =
-                if isWorkspace then
-                  # Workaround for sources that have isWorkspace as true, but don't
-                  # declare all their members in `workspace.members`
-                  if builtins.length filteredPaths > 0
-                  then builtins.head filteredPaths
-                  # This does not cover all possible cases, only is a last ditch effort
-                  else name
-                else
-                  ".";
             in
             pkgs.runCommand (lib.removeSuffix ".tar.gz" srcName) { }
               ''
                 mkdir -p $out
-                cp -apR ${src}/${pathToExtract}/* $out
+                cp -apR ${src}/* $out
                 echo '{"package":null,"files":{}}' > $out/.cargo-checksum.json
               '';
 
